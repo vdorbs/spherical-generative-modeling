@@ -8,6 +8,7 @@ setup(
         'scipy',
         'matplotlib',
         'potpourri3d',
-        'trimesh'
+        'trimesh',
+        'torch'
     ]
 )

@@ -5,7 +5,7 @@ from numpy.linalg import norm
 from potpourri3d import read_mesh
 from trimesh import Trimesh
 
-from spherical_generative_modeling import parametrize
+from spherical_generative_modeling import ConformallyEquivalentSphere, parametrize
 
 
 parser = ArgumentParser()
@@ -27,7 +27,7 @@ ax.set_ylabel('$y$', fontsize=16)
 ax.set_zlabel('$z$', fontsize=16)
 show()
 
-total_log_factors, new_vertices = parametrize(vertices, faces, mesh.area_faces, flatten_step_size=0.1, verbose=True)
+total_log_factors, new_vertices = parametrize(vertices, faces, mesh.area_faces, flatten_max_iters=400, flatten_step_size=0.1, verbose=True)
 
 # Conformality check
 faces_extra = concatenate([faces, faces[:, :1]], axis=-1)
@@ -43,7 +43,7 @@ new_edge_lengths = norm(new_vertex_diffs, axis=-1)
 total_log_factor_columns = stack([total_log_factors[indices] for indices in faces_extra.T], axis=-1)
 total_log_factor_averages = (total_log_factor_columns[:, :-1] + total_log_factor_columns[:, 1:]) / 2
 
-assert abs(new_edge_lengths - exp(total_log_factor_averages) * edge_lengths).max() < 1e-6
+assert abs(new_edge_lengths - exp(total_log_factor_averages) * edge_lengths).max() < 1e-12
 
 ax = figure(figsize=(6, 6)).add_subplot(1, 1, 1, projection='3d')
 ax.scatter(*new_vertices.T, s=1)
@@ -55,4 +55,69 @@ ax.set_zlim(-1, 1)
 ax.set_xlabel('$x$', fontsize=16)
 ax.set_ylabel('$y$', fontsize=16)
 ax.set_zlabel('$z$', fontsize=16)
+show()
+
+
+from numpy import pi
+from torch import arange, cat, cos, float64, int64, meshgrid, randn, sin, stack, tensor
+from torch.linalg import norm
+
+
+new_vertices = tensor(new_vertices, dtype=float64)
+faces = tensor(faces, dtype=int64)
+total_log_factors = tensor(total_log_factors, dtype=float64)
+sphere = ConformallyEquivalentSphere(new_vertices, faces)
+
+query_points = randn(10, 3, dtype=float64)
+query_points /= norm(query_points, dim=-1, keepdim=True)
+spherical_triangle_idxs, _ = sphere.locate(query_points)
+
+ax = figure(figsize=(6, 6)).add_subplot(1, 1, 1, projection='3d')
+ax.plot_trisurf(*new_vertices.T, triangles=faces, alpha=0.1)
+ax.scatter(*query_points.T, c='C1')
+for face_idx in spherical_triangle_idxs:
+    spherical_triangle_vertices = new_vertices[faces[face_idx]]
+    ax.scatter(*spherical_triangle_vertices.T, c='C2')
+ax.view_init(azim=45)
+ax.set_xlim(-1, 1)
+ax.set_ylim(-1, 1)
+ax.set_zlim(-1, 1)
+ax.set_xlabel('$x$', fontsize=16)
+ax.set_ylabel('$y$', fontsize=16)
+ax.set_zlabel('$z$', fontsize=16)
+show()
+
+# Interpolate log conformal factors onto spherical grid
+bandwidth = 32
+longs = 2 * pi * arange(2 * bandwidth, dtype=float64) / (2 * bandwidth)
+colats = pi * (2 * arange(2 * bandwidth, dtype=float64) + 1) / (4 * bandwidth)
+long_grid, colat_grid = meshgrid(longs, colats, indexing='ij')
+all_longs = long_grid.reshape(-1)
+all_colats = colat_grid.reshape(-1)
+all_carts = cat([sin(all_colats).unsqueeze(-1) * stack([cos(all_longs), sin(all_longs)], dim=-1), cos(all_colats).unsqueeze(-1)], dim=-1)
+spherical_triangle_idxs, barycentric_coords = sphere.locate(all_carts)
+interpolated_total_log_factors = (total_log_factors[faces[spherical_triangle_idxs]] * barycentric_coords).sum(dim=-1)
+
+fig = figure(figsize=(12, 6), tight_layout=True)
+
+ax = fig.add_subplot(1, 2, 1, projection='3d')
+ax.scatter(*new_vertices.T, s=5, c=total_log_factors, cmap='jet')
+ax.view_init(azim=45)
+ax.set_xlim(-1, 1)
+ax.set_ylim(-1, 1)
+ax.set_zlim(-1, 1)
+ax.set_xlabel('$x$', fontsize=16)
+ax.set_ylabel('$y$', fontsize=16)
+ax.set_zlabel('$z$', fontsize=16)
+
+ax = fig.add_subplot(1, 2, 2, projection='3d')
+ax.scatter(*all_carts.T, s=5, c=interpolated_total_log_factors, cmap='jet')
+ax.view_init(azim=45)
+ax.set_xlim(-1, 1)
+ax.set_ylim(-1, 1)
+ax.set_zlim(-1, 1)
+ax.set_xlabel('$x$', fontsize=16)
+ax.set_ylabel('$y$', fontsize=16)
+ax.set_zlabel('$z$', fontsize=16)
+
 show()
