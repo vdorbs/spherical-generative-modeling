@@ -1,2 +1,2 @@
-from .ConformallyEquivalentSphere import ConformallyEquivalentSphere
+from .conformally_equivalent_sphere import ConformallyEquivalentSphere
 from .parametrization import parametrize

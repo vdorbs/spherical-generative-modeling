@@ -58,9 +58,13 @@ ax.set_zlabel('$z$', fontsize=16)
 show()
 
 
+from matplotlib.animation import FuncAnimation
 from numpy import pi
-from torch import arange, cat, cos, float64, int64, meshgrid, randn, sin, stack, tensor
-from torch.linalg import norm
+from spherical_generative_modeling.models.continuous_normalizing_flows import SphereVectorFieldTangentRepresentation
+from torch import arange, cat, cos, float64, int64, linspace, logical_and, meshgrid, no_grad, ones, randn, sin, Size, stack, Tensor, tensor, zeros, zeros_like
+from torch.linalg import cross, norm
+from torch.nn import Module
+from torchdiffeq import odeint, odeint_event
 
 
 new_vertices = tensor(new_vertices, dtype=float64)
@@ -121,3 +125,60 @@ ax.set_ylabel('$y$', fontsize=16)
 ax.set_zlabel('$z$', fontsize=16)
 
 show()
+
+
+class TestVectorField(Module):
+    def forward(self, t: Tensor, x: Tensor):
+        n = tensor([0., 0., 1.], dtype=float64)
+        reshaped_n = n.reshape(Size(ones(len(x.shape) - 1, dtype=int)) + n.shape)
+        return cross(reshaped_n, x)
+
+
+model = TestVectorField()
+
+x_0 = randn(1000, 3, dtype=float64)
+x_0 /= norm(x_0, dim=-1, keepdim=True)
+xs = zeros(Size([0]) + x_0.shape)
+ts = linspace(0, 10, 200 + 1, dtype=float64)
+
+x_curr = x_0.clone()
+t_curr = ts[0]
+while t_curr < ts[-1]:
+    local_model = SphereVectorFieldTangentRepresentation(model, x_curr, ts[-1])
+    v_curr = zeros_like(x_curr)
+
+    with no_grad():
+        t_next, _ = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn)
+        is_between_events = logical_and(ts >= t_curr, ts <= t_next)
+        ts_between_events = ts[is_between_events]
+        vs_between_events = odeint(local_model, v_curr, ts_between_events)
+        xs_between_events = local_model.to_manifold(vs_between_events)
+
+    xs = cat([xs, xs_between_events[:-1]])
+    print(t_next.item(), xs.shape, ts_between_events[-1].item())
+    x_curr = xs_between_events[-1]
+    t_curr = ts_between_events[-1]
+
+xs = cat([xs, xs_between_events[-1:]])
+
+fig = figure(figsize=(6, 6), tight_layout=True)
+ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+ax.scatter(*xs[0].T, s=1, alpha=0.5)
+scatter = ax.scatter(*xs[0].T)
+
+ax.view_init(azim=45)
+ax.set_xlim(-1, 1)
+ax.set_ylim(-1, 1)
+ax.set_zlim(-1, 1)
+ax.set_xlabel('$x$', fontsize=16)
+ax.set_ylabel('$y$', fontsize=16)
+ax.set_zlabel('$z$', fontsize=16)
+
+def update(frame):
+    scatter._offsets3d = tuple(xs[frame].numpy().T)
+    return scatter,
+
+frames = arange(len(ts))
+anim = FuncAnimation(fig, update, frames, interval=int(1000 * 0.05))
+anim.save('output.gif', writer='imagemagik')

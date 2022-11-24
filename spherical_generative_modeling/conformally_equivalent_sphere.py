@@ -77,6 +77,7 @@ class ConformallyEquivalentSphere:
         assert query_point.dtype == float64
         assert (norm(query_point, dim=-1) - 1.).abs().max() < 1e-12
 
+        # Find containing spherical triangles through hemisphere tests
         batch_dims = query_point.shape[:-1]
         reshape_dims = Size(ones(len(batch_dims), dtype=int))
         reshaped_query_point = query_point.reshape(batch_dims + Size([1, 1, 3]))
@@ -93,6 +94,7 @@ class ConformallyEquivalentSphere:
         assert spherical_triangle_idx.min() >= 0
         assert spherical_triangle_idx.max() <= num_faces - 1
 
+        # Project query points onto Euclidean triangles
         containing_vertices = self.vertices[self.faces[spherical_triangle_idx]]
         containing_vertices_extra = cat([containing_vertices, containing_vertices[..., :1, :]], dim=-2)
         containing_euclidean_edge_vectors = diff(containing_vertices_extra, dim=-2)
@@ -100,6 +102,7 @@ class ConformallyEquivalentSphere:
         euclidean_projection_magnitude = (containing_vertices[..., 0, :] * containing_euclidean_normal).sum(dim=-1) / (query_point * containing_euclidean_normal).sum(dim=-1)
         euclidean_projection = euclidean_projection_magnitude.unsqueeze(-1) * query_point
 
+        # Compute barycentric coordinates
         containing_euclidean_area = norm(containing_euclidean_normal, dim=-1) / 2
         containing_euclidean_diffs = euclidean_projection.unsqueeze(-2) - containing_vertices
         containing_euclidean_subareas = norm(cross(containing_euclidean_edge_vectors, containing_euclidean_diffs), dim=-1) / 2

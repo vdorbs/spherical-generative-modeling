@@ -11,5 +11,6 @@ python-dateutil==2.8.2
 scipy==1.7.3
 six==1.16.0
 torch==1.13.0
+torchdiffeq==0.2.3
 trimesh==3.16.4
 typing-extensions==4.4.0

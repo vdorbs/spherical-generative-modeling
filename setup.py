@@ -9,6 +9,7 @@ setup(
         'matplotlib',
         'potpourri3d',
         'trimesh',
-        'torch'
+        'torch',
+        'torchdiffeq'
     ]
 )
