@@ -1,4 +1,4 @@
-from torch import arange, arccos, cat, diff, float64, int64, IntTensor, ones, Size, sqrt, Tensor
+from torch import arange, arccos, cat, diff, float64, int64, IntTensor, minimum, ones, ones_like, Size, sqrt, Tensor
 from torch.linalg import cross, norm
 from typing import Tuple
 
@@ -58,10 +58,14 @@ class ConformallyEquivalentSphere:
         assert (norm(target, dim=-1) - 1.).abs().max() < 1e-12
 
         cos_angle = (base * target).sum(dim=-1)
+        is_over_1 = cos_angle >= 1.
+        cos_angle = minimum(cos_angle, ones_like(cos_angle))
         angle = arccos(cos_angle)
         sin_angle = sqrt(1 - (cos_angle ** 2))
-        projection = (target - cos_angle.unsqueeze(-1) * base) / sin_angle.unsqueeze(-1)
-        sphere_log = angle.unsqueeze(-1) * projection
+        ratio = ones_like(angle)
+        ratio[~is_over_1] = angle[~is_over_1] / sin_angle[~is_over_1]
+        unnormalized_projection = target - cos_angle.unsqueeze(-1) * base
+        sphere_log = ratio.unsqueeze(-1) * unnormalized_projection
 
         assert (base * sphere_log).sum(dim=-1).abs().max() < 1e-12
         return sphere_log
