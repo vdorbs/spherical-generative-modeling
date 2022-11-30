@@ -257,12 +257,22 @@ class ContinuousNormalizingFlow:
         self.base_distribution = base_distribution
         self.t_max = t_max
 
-    def normalize(self, data: Tensor, ts: Optional[Tensor] = None, enable_grad: bool = False, verbose: bool = False):
+    def normalize(
+            self,
+            data: Tensor,
+            ts: Optional[Tensor] = None,
+            enable_grad: bool = False,
+            rtol: float = 1e-7,
+            atol: float = 1e-9,
+            verbose: bool = False
+    ):
         """ Flow data distribution to base distribution via vector field
 
         :param data: (batch_dims, 3) tensor of data points on the unit sphere
         :param ts: optional (num_steps,) tensor of times at which to return trajectory values
         :param enable_grad: whether gradients are computed
+        :param rtol: integrator relative tolerance
+        :param atol: integrator absolute tolerance
         :param verbose: print integration details
         :return: (batch_dims, 3) tensor of final trajectory values or (num_steps, batch_dims, 3) trajectories
         """
@@ -289,7 +299,7 @@ class ContinuousNormalizingFlow:
                 num_events += 1
                 local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max)
                 v_curr = zeros_like(x_curr)
-                t_next, vs = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn)
+                t_next, vs = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn, rtol=rtol, atol=atol)
                 v_next = vs[-1]
                 x_next = local_model.to_manifold(v_next)
 
@@ -301,7 +311,7 @@ class ContinuousNormalizingFlow:
                     if include_t_curr:
                         ts_between_events = cat([t_curr.unsqueeze(-1), ts_between_events])
 
-                    vs_between_events = odeint(local_model, v_curr, ts_between_events)
+                    vs_between_events = odeint(local_model, v_curr, ts_between_events, rtol=rtol, atol=atol)
                     xs_between_events = local_model.to_manifold(vs_between_events)
                     if include_t_curr:
                         xs_between_events = xs_between_events[1:]
@@ -317,7 +327,15 @@ class ContinuousNormalizingFlow:
 
         return x_curr
 
-    def generate(self, noise: Tensor, ts: Optional[Tensor] = None, enable_grad: bool = False, verbose: bool = False):
+    def generate(
+            self,
+            noise: Tensor,
+            ts: Optional[Tensor] = None,
+            enable_grad: bool = False,
+            rtol: float = 1e-7,
+            atol: float = 1e-9,
+            verbose: bool = False
+    ):
         """ Flow base distribution to data distribution via reversed vector field
 
         :param noise: (batch_dims, 3) tensor of base distribution samples on the unit sphere
@@ -349,7 +367,7 @@ class ContinuousNormalizingFlow:
                 num_events += 1
                 local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, reverse_time=True)
                 v_curr = zeros_like(x_curr)
-                t_prev, vs = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn, reverse_time=True)
+                t_prev, vs = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn, reverse_time=True, rtol=rtol, atol=atol)
                 v_prev = vs[-1]
                 x_prev = local_model.to_manifold(v_prev)
 
@@ -361,7 +379,7 @@ class ContinuousNormalizingFlow:
                     if include_t_curr:
                         ts_between_events = cat([ts_between_events, t_curr.unsqueeze(-1)])
 
-                    vs_between_events = odeint(local_model, v_curr, ts_between_events.flip(0,)).flip(0,)
+                    vs_between_events = odeint(local_model, v_curr, ts_between_events.flip(0,), rtol=rtol, atol=atol).flip(0,)
                     xs_between_events = local_model.to_manifold(vs_between_events)
                     if include_t_curr:
                         xs_between_events = xs_between_events[:-1]
@@ -383,6 +401,8 @@ class ContinuousNormalizingFlow:
             log_prob: Tensor,
             ts: Optional[Tensor] = None,
             enable_grad: bool = False,
+            rtol: float = 1e-7,
+            atol: float = 1e-9,
             verbose: bool = False
     ):
         """ Flow base distribution (with log probabilities) to data distribution via reversed vector field
@@ -391,6 +411,8 @@ class ContinuousNormalizingFlow:
         :param log_prob: (batch_dims,) tensor of log probabilities under base distribution
         :param ts: optional (num_steps,) tensor of times at which to return trajectory values
         :param enable_grad: whether gradients are computed
+        :param rtol: integrator relative tolerance
+        :param atol: integrator absolute tolerance
         :param verbose: print integration details
         :return: (batch_dims, 3) tensor of final trajectory values and (batch_dims,) tensor of final log probabilities
                     or (num_steps, batch_dims, 3) trajectories and (num_steps, batch_dims) log probability trajectories
@@ -426,7 +448,7 @@ class ContinuousNormalizingFlow:
                 aug_local_model = AugmentedSphereVectorFieldTangentRepresentation(local_model)
                 v_aug_curr = zeros(aug_shape, dtype=float64)
                 v_aug_curr[..., -1] = log_prob_curr
-                t_prev, v_augs = odeint_event(aug_local_model, v_aug_curr, t_curr, event_fn=aug_local_model.event_fn, reverse_time=True)
+                t_prev, v_augs = odeint_event(aug_local_model, v_aug_curr, t_curr, event_fn=aug_local_model.event_fn, reverse_time=True, rtol=rtol, atol=atol)
                 v_aug_prev = v_augs[-1]
                 v_prev = v_aug_prev[..., :-1]
                 x_prev = local_model.to_manifold(v_prev)
@@ -440,7 +462,7 @@ class ContinuousNormalizingFlow:
                     if include_t_curr:
                         ts_between_events = cat([ts_between_events, t_curr.unsqueeze(-1)])
 
-                    v_augs_between_events = odeint(aug_local_model, v_aug_curr, ts_between_events.flip(0,)).flip(0,)
+                    v_augs_between_events = odeint(aug_local_model, v_aug_curr, ts_between_events.flip(0,), rtol=rtol, atol=atol).flip(0,)
                     vs_between_events = v_augs_between_events[..., :-1]
                     xs_between_events = local_model.to_manifold(vs_between_events)
                     log_probs_between_events = v_augs_between_events[..., -1]
@@ -460,20 +482,29 @@ class ContinuousNormalizingFlow:
 
         return x_curr, log_prob_curr
 
-    def log_prob(self, data: Tensor, enable_grad: bool = True, verbose: bool = False) -> Tensor:
+    def log_prob(
+            self,
+            data: Tensor,
+            enable_grad: bool = True,
+            rtol: float = 1e-7,
+            atol: float = 1e-9,
+            verbose: bool = False
+    ) -> Tensor:
         """ Compute log probabilities of data
 
         :param data: (batch_dims, 3) tensor of data on the unit sphere
         :param enable_grad: whether gradients are computed
+        :param rtol: integrator relative tolerance
+        :param atol: integrator absolute tolerance
         :param verbose: print integration details
         :return: (batch_dims,) tensor of log probabilities
         """
         assert data.shape[-1] == 3
         assert (norm(data, dim=-1) - 1.).abs().max() < 1e-12
 
-        noise = self.normalize(data, enable_grad=enable_grad, verbose=verbose)
+        noise = self.normalize(data, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose)
         noise_log_prob = self.base_distribution.log_prob(noise)
-        reconstructed_data, data_log_prob = self.augmented_generate(noise, noise_log_prob, enable_grad=enable_grad, verbose=verbose)
+        reconstructed_data, data_log_prob = self.augmented_generate(noise, noise_log_prob, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose)
 
         with no_grad():
             assert norm(reconstructed_data - data, dim=-1).abs().max() < 1e-6
