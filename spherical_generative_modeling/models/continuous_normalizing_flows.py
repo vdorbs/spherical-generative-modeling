@@ -262,6 +262,7 @@ class ContinuousNormalizingFlow:
             data: Tensor,
             ts: Optional[Tensor] = None,
             enable_grad: bool = False,
+            bound: float = pi / 2,
             rtol: float = 1e-7,
             atol: float = 1e-9,
             verbose: bool = False
@@ -271,6 +272,7 @@ class ContinuousNormalizingFlow:
         :param data: (batch_dims, 3) tensor of data points on the unit sphere
         :param ts: optional (num_steps,) tensor of times at which to return trajectory values
         :param enable_grad: whether gradients are computed
+        :param bound: bound on tangent vector norm to trigger chart switches
         :param rtol: integrator relative tolerance
         :param atol: integrator absolute tolerance
         :param verbose: print integration details
@@ -297,7 +299,7 @@ class ContinuousNormalizingFlow:
             while t_curr < self.t_max:
                 # Compute event time t_next
                 num_events += 1
-                local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max)
+                local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, bound=bound)
                 v_curr = zeros_like(x_curr)
                 t_next, vs = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn, rtol=rtol, atol=atol)
                 v_next = vs[-1]
@@ -332,6 +334,7 @@ class ContinuousNormalizingFlow:
             noise: Tensor,
             ts: Optional[Tensor] = None,
             enable_grad: bool = False,
+            bound: float = pi / 2,
             rtol: float = 1e-7,
             atol: float = 1e-9,
             verbose: bool = False
@@ -340,6 +343,9 @@ class ContinuousNormalizingFlow:
 
         :param noise: (batch_dims, 3) tensor of base distribution samples on the unit sphere
         :param ts: optional (num_steps,) tensor of times at which to return trajectory values
+        :param bound: bound on tangent vector norm to trigger chart switches
+        :param rtol: integrator relative tolerance
+        :param atol: integrator absolute tolerance
         :param enable_grad: whether gradients are computed
         :param verbose: print integration details
         :return: (batch_dims, 3) tensor of final trajectory values or (num_steps, batch_dims, 3) trajectories
@@ -365,7 +371,7 @@ class ContinuousNormalizingFlow:
             while t_curr > 0.:
                 # Compute event time t_prev
                 num_events += 1
-                local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, reverse_time=True)
+                local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, reverse_time=True, bound=bound)
                 v_curr = zeros_like(x_curr)
                 t_prev, vs = odeint_event(local_model, v_curr, t_curr, event_fn=local_model.event_fn, reverse_time=True, rtol=rtol, atol=atol)
                 v_prev = vs[-1]
@@ -401,6 +407,7 @@ class ContinuousNormalizingFlow:
             log_prob: Tensor,
             ts: Optional[Tensor] = None,
             enable_grad: bool = False,
+            bound: float = pi / 2,
             rtol: float = 1e-7,
             atol: float = 1e-9,
             verbose: bool = False
@@ -411,6 +418,7 @@ class ContinuousNormalizingFlow:
         :param log_prob: (batch_dims,) tensor of log probabilities under base distribution
         :param ts: optional (num_steps,) tensor of times at which to return trajectory values
         :param enable_grad: whether gradients are computed
+        :param bound: bound on tangent vector norm to trigger chart switches
         :param rtol: integrator relative tolerance
         :param atol: integrator absolute tolerance
         :param verbose: print integration details
@@ -444,7 +452,7 @@ class ContinuousNormalizingFlow:
             while t_curr > 0.:
                 # Compute event time t_prev
                 num_events += 1
-                local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, reverse_time=True)
+                local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, reverse_time=True, bound=bound)
                 aug_local_model = AugmentedSphereVectorFieldTangentRepresentation(local_model)
                 v_aug_curr = zeros(aug_shape, dtype=float64)
                 v_aug_curr[..., -1] = log_prob_curr
@@ -486,6 +494,7 @@ class ContinuousNormalizingFlow:
             self,
             data: Tensor,
             enable_grad: bool = True,
+            bound: float = pi / 2,
             rtol: float = 1e-7,
             atol: float = 1e-9,
             verbose: bool = False
@@ -494,6 +503,7 @@ class ContinuousNormalizingFlow:
 
         :param data: (batch_dims, 3) tensor of data on the unit sphere
         :param enable_grad: whether gradients are computed
+        :param bound: bound on tangent vector norm to trigger chart switches
         :param rtol: integrator relative tolerance
         :param atol: integrator absolute tolerance
         :param verbose: print integration details
@@ -502,9 +512,9 @@ class ContinuousNormalizingFlow:
         assert data.shape[-1] == 3
         assert (norm(data, dim=-1) - 1.).abs().max() < 1e-12
 
-        noise = self.normalize(data, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose)
+        noise = self.normalize(data, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose, bound=bound)
         noise_log_prob = self.base_distribution.log_prob(noise)
-        reconstructed_data, data_log_prob = self.augmented_generate(noise, noise_log_prob, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose)
+        reconstructed_data, data_log_prob = self.augmented_generate(noise, noise_log_prob, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose, bound=bound)
 
         with no_grad():
             assert norm(reconstructed_data - data, dim=-1).abs().max() < 1e-6
