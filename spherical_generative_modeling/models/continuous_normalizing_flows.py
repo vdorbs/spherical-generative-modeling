@@ -320,8 +320,14 @@ class ContinuousNormalizingFlow:
                             xs_between_events = xs_between_events[1:]
                         trajectory[is_between_events] = xs_between_events
 
+                if ~compute_trajectory and t_next > self.t_max:
+                    v_next = odeint(local_model, v_curr, tensor([t_curr, self.t_max, t_next], dtype=float64), rtol=rtol, atol=atol)[1]
+                    t_next = self.t_max
+                    x_next = local_model.to_manifold(v_next)
+
                 if verbose:
                     print(num_events, t_curr.item(), t_next.item())
+
                 t_curr = t_next
                 x_curr = x_next
 
@@ -393,8 +399,14 @@ class ContinuousNormalizingFlow:
                             xs_between_events = xs_between_events[:-1]
                         trajectory[is_between_events] = xs_between_events
 
+                if ~compute_trajectory and t_prev < 0.:
+                    v_prev = odeint(local_model, v_curr, tensor([t_curr, 0., t_prev], dtype=float64), rtol=rtol, atol=atol)[1]
+                    t_prev = tensor(0., dtype=float64)
+                    x_prev = local_model.to_manifold(v_prev)
+
                 if verbose:
                     print(num_events, t_curr.item(), t_prev.item())
+
                 t_curr = t_prev
                 x_curr = x_prev
 
@@ -482,8 +494,16 @@ class ContinuousNormalizingFlow:
                             zs_between_events = zs_between_events[:-1]
                         trajectory[is_between_events] = zs_between_events
 
+                if ~compute_trajectory and t_prev < 0.:
+                    v_aug_prev = odeint(aug_local_model, v_aug_curr, tensor([t_curr, 0., t_prev], dtype=float64), rtol=rtol, atol=atol)[1]
+                    t_prev = tensor(0., dtype=float64)
+                    v_prev = v_aug_prev[..., :-1]
+                    x_prev = local_model.to_manifold(v_prev)
+                    log_prob_prev = v_aug_prev[..., -1]
+
                 if verbose:
                     print(num_events, t_curr.item(), t_prev.item())
+
                 t_curr = t_prev
                 x_curr = x_prev
                 log_prob_curr = log_prob_prev
