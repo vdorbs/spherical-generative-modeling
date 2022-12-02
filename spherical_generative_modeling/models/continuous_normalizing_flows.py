@@ -309,15 +309,16 @@ class ContinuousNormalizingFlow:
                     # Compute solution between t_curr and t_next
                     is_between_events = logical_and(ts >= t_curr, ts <= t_next)
                     ts_between_events = ts[is_between_events]
-                    include_t_curr = ts_between_events[0] != t_curr
-                    if include_t_curr:
-                        ts_between_events = cat([t_curr.unsqueeze(-1), ts_between_events])
+                    if len(ts_between_events) > 0:
+                        include_t_curr = ts_between_events[0] != t_curr
+                        if include_t_curr:
+                            ts_between_events = cat([t_curr.unsqueeze(-1), ts_between_events])
 
-                    vs_between_events = odeint(local_model, v_curr, ts_between_events, rtol=rtol, atol=atol)
-                    xs_between_events = local_model.to_manifold(vs_between_events)
-                    if include_t_curr:
-                        xs_between_events = xs_between_events[1:]
-                    trajectory[is_between_events] = xs_between_events
+                        vs_between_events = odeint(local_model, v_curr, ts_between_events, rtol=rtol, atol=atol)
+                        xs_between_events = local_model.to_manifold(vs_between_events)
+                        if include_t_curr:
+                            xs_between_events = xs_between_events[1:]
+                        trajectory[is_between_events] = xs_between_events
 
                 if verbose:
                     print(num_events, t_curr.item(), t_next.item())
@@ -381,15 +382,16 @@ class ContinuousNormalizingFlow:
                     # Compute solution between t_prev and t_curr
                     is_between_events = logical_and(ts >= t_prev, ts <= t_curr)
                     ts_between_events = ts[is_between_events]
-                    include_t_curr = ts_between_events[-1] != t_curr
-                    if include_t_curr:
-                        ts_between_events = cat([ts_between_events, t_curr.unsqueeze(-1)])
+                    if len(ts_between_events) > 0:
+                        include_t_curr = ts_between_events[-1] != t_curr
+                        if include_t_curr:
+                            ts_between_events = cat([ts_between_events, t_curr.unsqueeze(-1)])
 
-                    vs_between_events = odeint(local_model, v_curr, ts_between_events.flip(0,), rtol=rtol, atol=atol).flip(0,)
-                    xs_between_events = local_model.to_manifold(vs_between_events)
-                    if include_t_curr:
-                        xs_between_events = xs_between_events[:-1]
-                    trajectory[is_between_events] = xs_between_events
+                        vs_between_events = odeint(local_model, v_curr, ts_between_events.flip(0,), rtol=rtol, atol=atol).flip(0,)
+                        xs_between_events = local_model.to_manifold(vs_between_events)
+                        if include_t_curr:
+                            xs_between_events = xs_between_events[:-1]
+                        trajectory[is_between_events] = xs_between_events
 
                 if verbose:
                     print(num_events, t_curr.item(), t_prev.item())
@@ -466,18 +468,19 @@ class ContinuousNormalizingFlow:
                     # Compute solution between t_prev and t_curr
                     is_between_events = logical_and(ts >= t_prev, ts <= t_curr)
                     ts_between_events = ts[is_between_events]
-                    include_t_curr = ts_between_events[-1] != t_curr
-                    if include_t_curr:
-                        ts_between_events = cat([ts_between_events, t_curr.unsqueeze(-1)])
+                    if len(ts_between_events) > 0:
+                        include_t_curr = ts_between_events[-1] != t_curr
+                        if include_t_curr:
+                            ts_between_events = cat([ts_between_events, t_curr.unsqueeze(-1)])
 
-                    v_augs_between_events = odeint(aug_local_model, v_aug_curr, ts_between_events.flip(0,), rtol=rtol, atol=atol).flip(0,)
-                    vs_between_events = v_augs_between_events[..., :-1]
-                    xs_between_events = local_model.to_manifold(vs_between_events)
-                    log_probs_between_events = v_augs_between_events[..., -1]
-                    zs_between_events = cat([xs_between_events, log_probs_between_events.unsqueeze(-1)], dim=-1)
-                    if include_t_curr:
-                        zs_between_events = zs_between_events[:-1]
-                    trajectory[is_between_events] = zs_between_events
+                        v_augs_between_events = odeint(aug_local_model, v_aug_curr, ts_between_events.flip(0,), rtol=rtol, atol=atol).flip(0,)
+                        vs_between_events = v_augs_between_events[..., :-1]
+                        xs_between_events = local_model.to_manifold(vs_between_events)
+                        log_probs_between_events = v_augs_between_events[..., -1]
+                        zs_between_events = cat([xs_between_events, log_probs_between_events.unsqueeze(-1)], dim=-1)
+                        if include_t_curr:
+                            zs_between_events = zs_between_events[:-1]
+                        trajectory[is_between_events] = zs_between_events
 
                 if verbose:
                     print(num_events, t_curr.item(), t_prev.item())
