@@ -540,6 +540,9 @@ class ContinuousNormalizingFlow:
         reconstructed_data, data_log_prob = self.augmented_generate(noise, noise_log_prob, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose, bound=bound)
 
         with no_grad():
-            assert norm(reconstructed_data - data, dim=-1).abs().max() < 1e-6
+            assert norm(reconstructed_data - data, dim=-1).max() < 1e-4
+
+            if verbose:
+                print('Max reconstruction error', norm(reconstructed_data - data, dim=-1).max())
 
         return data_log_prob
