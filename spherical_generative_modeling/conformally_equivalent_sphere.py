@@ -35,7 +35,6 @@ class ConformallyEquivalentSphere:
         sphere_logs = self.log(bases, targets)
         hemisphere_normals = cross(bases, sphere_logs) # Rotate pi/2 CCW
         orientations = (opposites * hemisphere_normals).sum(dim=-1).sign()
-        assert (orientations == 1.).all() or (orientations == -1.).all()
 
         self.vertices = vertices
         self.faces = faces
