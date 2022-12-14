@@ -1,4 +1,4 @@
-from torch import arange, arccos, cat, diff, float64, int64, IntTensor, minimum, ones, ones_like, Size, sqrt, Tensor
+from torch import arange, arccos, cat, diff, float64, int64, IntTensor, minimum, ones, ones_like, Size, sqrt, Tensor, tensor
 from torch.linalg import cross, norm
 from typing import Tuple
 
@@ -109,7 +109,7 @@ class ConformallyEquivalentSphere:
         containing_euclidean_area = norm(containing_euclidean_normal, dim=-1) / 2
         containing_euclidean_diffs = euclidean_projection.unsqueeze(-2) - containing_vertices
         containing_euclidean_subareas = norm(cross(containing_euclidean_edge_vectors, containing_euclidean_diffs), dim=-1) / 2
-        barycentric_coords = containing_euclidean_subareas / containing_euclidean_area.unsqueeze(-1)
+        barycentric_coords = containing_euclidean_subareas[..., tensor([1, 2, 0])] / containing_euclidean_area.unsqueeze(-1)
         assert (barycentric_coords.sum(dim=-1) - 1.).abs().max() < 1e-12
 
         return spherical_triangle_idx, barycentric_coords
