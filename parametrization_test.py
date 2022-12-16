@@ -144,7 +144,7 @@ ts = linspace(0, 10, 200 + 1, dtype=float64)
 x_curr = x_0.clone()
 t_curr = ts[0]
 while t_curr < ts[-1]:
-    local_model = SphereVectorFieldTangentRepresentation(model, x_curr, ts[-1])
+    local_model = SphereVectorFieldTangentRepresentation(model, x_curr, t_max=ts[-1])
     v_curr = zeros_like(x_curr)
 
     with no_grad():
