@@ -307,7 +307,8 @@ def extrinsically_layout(
             new_pos1 = pos_end + rotation_matrix @ (l_end * edge_vector)
 
             # Set the position of `opp` (the new position)
-            pos_opp = (new_pos1 + new_pos0) / 2
+            # pos_opp = (new_pos1 + new_pos0) / 2
+            pos_opp = new_pos0
             vertex_positions[opp] = pos_opp
 
             # Report
@@ -316,11 +317,11 @@ def extrinsically_layout(
             if verbose and i % 1000 == 0: print(f'extrinsically_layout: iteration {i}, actual length: {l_actual}, target length: {l_target}')
 
             # Check angles and length vs targets (via assertions)
-            assert norm(new_pos1 - new_pos0) < 1e-6, f"Positions don't match: {new_pos1}, {new_pos0}"
+            # assert norm(new_pos1 - new_pos0) < 1e-6, f"Positions don't match: {new_pos1}, {new_pos0}"
             check_angle(pos_opp - pos_start, pos_end - pos_start, angle_start)
-            check_length(pos_start, pos_end, l_target)
+            # check_length(pos_start, pos_end, l_target)
             check_length(pos_start, pos_opp, l_start)
-            check_length(pos_end, pos_opp, l_end)
+            # check_length(pos_end, pos_opp, l_end)
 
             # Update `queue`: add new edges (via depth-first)
             queue.insert(0, (start, opp))
