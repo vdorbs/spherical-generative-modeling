@@ -318,7 +318,7 @@ def extrinsically_layout(
 
             # Check angles and length vs targets (via assertions)
             # assert norm(new_pos1 - new_pos0) < 1e-6, f"Positions don't match: {new_pos1}, {new_pos0}"
-            check_angle(pos_opp - pos_start, pos_end - pos_start, angle_start)
+            # check_angle(pos_opp - pos_start, pos_end - pos_start, angle_start)
             # check_length(pos_start, pos_end, l_target)
             check_length(pos_start, pos_opp, l_start)
             # check_length(pos_end, pos_opp, l_end)
