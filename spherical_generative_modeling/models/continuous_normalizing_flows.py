@@ -371,9 +371,9 @@ class ContinuousNormalizingFlow:
 
         with set_grad_enabled(enable_grad):
             x_curr = noise
-            t_curr = self.t_max
+            t_curr = self.t_max.to(noise)
             if compute_trajectory:
-                trajectory = zeros(ts.shape + noise.shape, dtype=float64)
+                trajectory = zeros(ts.shape + noise.shape, dtype=float64, device=noise.device)
 
             num_events = -1
             while t_curr > 0.:
@@ -459,9 +459,9 @@ class ContinuousNormalizingFlow:
             aug_shape = tensor(x_curr.shape)
             aug_shape[-1] += 1
             aug_shape = Size(aug_shape)
-            t_curr = self.t_max.to(x_curr)
+            t_curr = self.t_max.to(noise)
             if compute_trajectory:
-                trajectory = zeros(ts.shape + aug_shape, dtype=float64)
+                trajectory = zeros(ts.shape + aug_shape, dtype=float64, device=noise.device)
 
             num_events = -1
             while t_curr > 0.:

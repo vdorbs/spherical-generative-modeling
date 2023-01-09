@@ -2,7 +2,7 @@ import numpy
 import torch
 from numpy import pi
 from spherical_generative_modeling.models.continuous_normalizing_flows import ContinuousNormalizingFlow, SphereVectorField
-from torch import float64, load, ones, randn, Size, Tensor
+from torch import cat, float64, load, ones, randn, Size, Tensor
 from torch.distributions import Distribution
 from torch.linalg import norm
 from torch.optim import Adam
@@ -41,6 +41,7 @@ cnf = ContinuousNormalizingFlow(model, base_distribution)
 training_data = sphere_data[:5000]
 validation_data = sphere_data[5000:]
 data_loader = DataLoader(TensorDataset(training_data, training_data), batch_size=256, shuffle=True)
+validation_data_loader = DataLoader(TensorDataset(validation_data, validation_data), batch_size=256, shuffle=True)
 optimizer = Adam(model.parameters(), lr=1e-2, maximize=True)
 
 for epoch in range(1):
@@ -52,3 +53,13 @@ for epoch in range(1):
         optimizer.zero_grad()
         total_log_prob.backward()
         optimizer.step()
+
+    all_generated_sphere_samples = []
+    for step, (batch, _) in enumerate(validation_data_loader):
+        batch = batch.to(device)
+        generated_sphere_samples = cnf.generate(batch)
+        all_generated_sphere_samples.append(generated_sphere_samples.cpu())
+        print(step)
+
+    generated_sphere_samples = cat(all_generated_sphere_samples)
+
