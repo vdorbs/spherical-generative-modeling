@@ -1,4 +1,5 @@
 from numpy import pi
+import torch
 from torch import cat, cos, float64, logical_and, no_grad, ones, sin, Size, Tensor, tensor, zeros, zeros_like
 from torch.autograd import grad, set_grad_enabled
 from torch.autograd.functional import jvp
@@ -36,7 +37,7 @@ class SphereVectorField(Module):
         assert x.dtype == float64
         assert (norm(x, dim=-1) - 1.).abs().max() < 1e-12
 
-        t = t * ones(x.shape[:-1])
+        t = t * ones(x.shape[:-1]).to(x)
         v = self.model(cat([x, t.unsqueeze(-1)], dim=-1))
         # Remove component in normal direction
         v_tangent = v - (x * v).sum(dim=-1).unsqueeze(-1) * x
@@ -291,9 +292,9 @@ class ContinuousNormalizingFlow:
 
         with set_grad_enabled(enable_grad):
             x_curr = data
-            t_curr = tensor(0, dtype=float64)
+            t_curr = tensor(0, dtype=float64, device=data.device)
             if compute_trajectory:
-                trajectory = zeros(ts.shape + data.shape, dtype=float64)
+                trajectory = zeros(ts.shape + data.shape, dtype=float64, device=data.device)
 
             num_events = -1
             while t_curr < self.t_max:
@@ -458,7 +459,7 @@ class ContinuousNormalizingFlow:
             aug_shape = tensor(x_curr.shape)
             aug_shape[-1] += 1
             aug_shape = Size(aug_shape)
-            t_curr = self.t_max
+            t_curr = self.t_max.to(x_curr)
             if compute_trajectory:
                 trajectory = zeros(ts.shape + aug_shape, dtype=float64)
 
@@ -468,7 +469,7 @@ class ContinuousNormalizingFlow:
                 num_events += 1
                 local_model = SphereVectorFieldTangentRepresentation(self.model, x_curr, t_max=self.t_max, reverse_time=True, bound=bound)
                 aug_local_model = AugmentedSphereVectorFieldTangentRepresentation(local_model)
-                v_aug_curr = zeros(aug_shape, dtype=float64)
+                v_aug_curr = zeros(aug_shape, dtype=float64, device=x_curr.device)
                 v_aug_curr[..., -1] = log_prob_curr
                 t_prev, v_augs = odeint_event(aug_local_model, v_aug_curr, t_curr, event_fn=aug_local_model.event_fn, reverse_time=True, rtol=rtol, atol=atol)
                 v_aug_prev = v_augs[-1]
@@ -536,7 +537,7 @@ class ContinuousNormalizingFlow:
         assert (norm(data, dim=-1) - 1.).abs().max() < 1e-12
 
         noise = self.normalize(data, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose, bound=bound)
-        noise_log_prob = self.base_distribution.log_prob(noise)
+        noise_log_prob = self.base_distribution.log_prob(noise).to(noise)
         reconstructed_data, data_log_prob = self.augmented_generate(noise, noise_log_prob, enable_grad=enable_grad, rtol=rtol, atol=atol, verbose=verbose, bound=bound)
 
         if verbose:
