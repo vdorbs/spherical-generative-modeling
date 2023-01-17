@@ -1,0 +1,3 @@
+[submodule "ts2kit"]
+	path = ts2kit
+	url = https://github.com/twmitchel/TS2Kit.git
