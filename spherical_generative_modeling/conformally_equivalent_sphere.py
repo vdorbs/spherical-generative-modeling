@@ -113,3 +113,20 @@ class ConformallyEquivalentSphere:
         assert (barycentric_coords.sum(dim=-1) - 1.).abs().max() < 1e-12
 
         return spherical_triangle_idx, barycentric_coords
+
+    def change_of_area(self, face_idx: IntTensor, barycentric_coords: Tensor) -> Tensor:
+        """ Compute changes of area when projecting from sphere-inscribed mesh to sphere
+
+        :param face_idx: (batch_dims,) tensor of face indices
+        :param barycentric_coords: (batch_dims, 3) tensor of barycentric coordinates
+        :return: (batch_dims,) tensor of changes of area
+        """
+
+        containing_vertices = self.vertices[self.faces[face_idx]]
+        containing_inscribed_edge_vectors = diff(containing_vertices, dim=-2)
+        containing_inscribed_normal = cross(containing_inscribed_edge_vectors[..., 1, :], -containing_inscribed_edge_vectors[..., 0, :])
+        containing_inscribed_normal /= norm(containing_inscribed_normal, dim=-1, keepdim=True)
+
+        inscribed_point = (barycentric_coords.unsqueeze(-1) * containing_vertices).sum(dim=-1)
+        sphere_point = inscribed_point / norm(inscribed_point, dim=-1, keepdim=True)
+        return ((containing_inscribed_normal * containing_vertices[..., 0, :]).sum(dim=-1) ** 2) / ((containing_inscribed_normal * sphere_point).sum(dim=-1).abs() ** 3)
