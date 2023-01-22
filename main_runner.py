@@ -32,10 +32,39 @@ res = load(f'data/data_{args.mesh}.pt')
 mesh_vertices = res['mesh_vertices']
 sphere_vertices = res['sphere_vertices']
 faces = res['faces']
+mesh_data = res['data']
 data_face_idxs = res['data_face_idxs']
 data_barycentric_coords = res['data_barycentric_coords']
 inscribed_data = (data_barycentric_coords.unsqueeze(-1) * sphere_vertices[faces[data_face_idxs]]).sum(dim=-2)
 sphere_data = inscribed_data / norm(inscribed_data, dim=-1, keepdim=True)
+
+fig = figure(figsize=(12, 4), tight_layout=True)
+
+ax = fig.add_subplot(1, 3, 1, projection='3d')
+ax.plot_trisurf(*mesh_vertices.T, triangles=faces, alpha=0.1)
+ax.scatter(*mesh_data.T, s=0.1, alpha=0.8)
+ax.view_init(azim=45)
+ax.set_xlim(-0.1, 0.1)
+ax.set_ylim(-0.1, 0.1)
+ax.set_zlim(-0.1, 0.1)
+
+ax = fig.add_subplot(1, 3, 2, projection='3d')
+ax.scatter(*sphere_data.T, s=0.1, alpha=0.8)
+ax.view_init(azim=45)
+ax.set_xlim(-1., 1.)
+ax.set_ylim(-1., 1.)
+ax.set_zlim(-1., 1.)
+
+ax = fig.add_subplot(1, 3, 3)
+longs = atan2(sphere_data[:, 1], sphere_data[:, 0])
+colats = acos(sphere_data[:, 2])
+ax.scatter(longs, colats, s=0.1, alpha=0.8)
+ax.axis('equal')
+ax.set_xlim(-pi, pi)
+ax.set_ylim(0, pi)
+ax.grid()
+
+wandb.log({'training_data': wandb.Image(fig)})
 
 sphere = ConformallyEquivalentSphere(sphere_vertices, faces)
 mesh_areas = tensor(face_areas(mesh_vertices, faces), dtype=float64)
@@ -228,14 +257,14 @@ for epoch in range(args.num_epochs):
 
                 ax = fig.add_subplot(1, 3, 1, projection='3d')
                 ax.plot_trisurf(*mesh_vertices.T, triangles=faces, alpha=0.1)
-                ax.scatter(*generated_mesh_samples.T, s=1, alpha=0.8)
+                ax.scatter(*generated_mesh_samples.T, s=0.1, alpha=0.8)
                 ax.view_init(azim=45)
                 ax.set_xlim(-0.1, 0.1)
                 ax.set_ylim(-0.1, 0.1)
                 ax.set_zlim(-0.1, 0.1)
 
                 ax = fig.add_subplot(1, 3, 2, projection='3d')
-                ax.scatter(*generated_sphere_samples.T, s=1, alpha=0.8)
+                ax.scatter(*generated_sphere_samples.T, s=0.1, alpha=0.8)
                 ax.view_init(azim=45)
                 ax.set_xlim(-1., 1.)
                 ax.set_ylim(-1., 1.)
@@ -244,7 +273,7 @@ for epoch in range(args.num_epochs):
                 ax = fig.add_subplot(1, 3, 3)
                 longs = atan2(generated_sphere_samples[:, 1], generated_sphere_samples[:, 0])
                 colats = acos(generated_sphere_samples[:, 2])
-                ax.scatter(longs, colats, s=1, alpha=0.8)
+                ax.scatter(longs, colats, s=0.1, alpha=0.8)
                 ax.axis('equal')
                 ax.set_xlim(-pi, pi)
                 ax.set_ylim(0, pi)
@@ -274,14 +303,14 @@ for epoch in range(args.num_epochs):
 
                 ax = fig.add_subplot(1, 3, 1, projection='3d')
                 ax.plot_trisurf(*mesh_vertices.T, triangles=faces, alpha=0.1)
-                ax.scatter(*generated_mesh_samples.T, s=1, alpha=0.8)
+                ax.scatter(*generated_mesh_samples.T, s=0.1, alpha=0.8)
                 ax.view_init(azim=45)
                 ax.set_xlim(-0.1, 0.1)
                 ax.set_ylim(-0.1, 0.1)
                 ax.set_zlim(-0.1, 0.1)
 
                 ax = fig.add_subplot(1, 3, 2, projection='3d')
-                ax.scatter(*generated_sphere_samples.T, s=1, alpha=0.8)
+                ax.scatter(*generated_sphere_samples.T, s=0.1, alpha=0.8)
                 ax.view_init(azim=45)
                 ax.set_xlim(-1., 1.)
                 ax.set_ylim(-1., 1.)
@@ -290,7 +319,7 @@ for epoch in range(args.num_epochs):
                 ax = fig.add_subplot(1, 3, 3)
                 longs = atan2(generated_sphere_samples[:, 1], generated_sphere_samples[:, 0])
                 colats = acos(generated_sphere_samples[:, 2])
-                ax.scatter(longs, colats, s=1, alpha=0.8)
+                ax.scatter(longs, colats, s=0.1, alpha=0.8)
                 ax.axis('equal')
                 ax.set_xlim(-pi, pi)
                 ax.set_ylim(0, pi)
