@@ -42,7 +42,7 @@ mesh_areas = tensor(face_areas(mesh_vertices, faces), dtype=float64)
 inscribed_areas = tensor(face_areas(sphere_vertices, faces), dtype=float64)
 data_mesh_areas = mesh_areas[data_face_idxs]
 data_inscribed_areas = inscribed_areas[data_face_idxs]
-changes_of_area = sphere.change_of_area(data_face_idxs, data_barycentric_coords) * data_mesh_areas / data_inscribed_areas
+changes_of_area = (sphere.change_of_area(data_face_idxs, data_barycentric_coords) * data_mesh_areas / data_inscribed_areas).to(args.device)
 
 sphere_data = sphere_data.to(args.device)
 training_data = TensorDataset(sphere_data[:5000], changes_of_area[:5000])
@@ -62,7 +62,8 @@ if args.arch == 'moser':
     uniform_barycentric_coords = stack([1 - sqrt_r_1s, sqrt_r_1s * (1 - r_2s), r_2s * sqrt_r_1s], dim=-1)
     uniform_mesh_data = (uniform_barycentric_coords.unsqueeze(-1) * mesh_vertices[faces[uniform_face_idxs]]).sum(dim=-2)
     uniform_sphere_data = (uniform_barycentric_coords.unsqueeze(-1) * sphere_vertices[faces[uniform_face_idxs]]).sum(dim=-2)
-    uniform_sphere_data /= norm(uniform_sphere_data, dim=-1, keepdim=True).to(args.device)
+    uniform_sphere_data /= norm(uniform_sphere_data, dim=-1, keepdim=True)
+    uniform_sphere_data = uniform_sphere_data.to(args.device)
     uniform_mesh_areas = mesh_areas[uniform_face_idxs]
     uniform_inscribed_areas = inscribed_areas[uniform_face_idxs]
     uniform_changes_of_area = (sphere.change_of_area(uniform_face_idxs, uniform_barycentric_coords) * uniform_mesh_areas / uniform_inscribed_areas).to(args.device)
@@ -72,7 +73,7 @@ if args.arch == 'moser':
     optimizer = Adam(flux_model.parameters(), lr=args.lr, weight_decay=1e-5)
 
 elif args.arch == 'cnf':
-    model = SphereVectorField(args.num_hidden_layers, args.hidden_dim)
+    model = SphereVectorField(args.num_hidden_layers, args.hidden_dim).to(args.device)
     augmented_model = AugmentedSphereVectorField(model)
     base_distribution = Uniform()
     ts_forward = tensor([0., 1.], dtype=float64, device=args.device)
