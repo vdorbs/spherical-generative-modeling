@@ -133,7 +133,7 @@ for epoch in range(args.num_epochs):
             divergence_integral = 4 * pi * flux_model.divergence(Uniform().sample((10000,)).to(args.device)).mean()
 
             wandb.log({
-                'neg_log_likelihood': neg_log_likelihood.item,
+                'neg_log_likelihood': neg_log_likelihood.item(),
                 'max_pos_violation': violations.max().item(),
                 'mean_pos_violation': violations.mean().item(),
                 'divergence_integral': divergence_integral.item()
