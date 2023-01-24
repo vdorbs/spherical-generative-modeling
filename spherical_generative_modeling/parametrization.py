@@ -1,4 +1,4 @@
-from numpy import arange, arccos, array, concatenate, cos, diff, exp, float64, identity, log, logical_and, maximum, minimum, ones_like, pi, sin, sort, stack, tan, unique, zeros, zeros_like, dot
+from numpy import arange, arccos, array, concatenate, cos, diff, exp, float64, identity, log, logical_and, maximum, minimum, ones_like, pi, sin, sort, stack, tan, unique, zeros, zeros_like, dot, isnan
 from numpy.linalg import norm, solve
 from numpy.typing import NDArray
 from scipy.sparse import coo_matrix, dia_matrix
@@ -129,8 +129,10 @@ def intrinsically_flatten(
         new_step = spsolve(new_hessian, new_gradient)
         log_factors[~is_boundary] -= step_size * new_step
 
+        assert not isnan(new_gradient).any(), '`new_gradient` has a NaN.'
+
         if verbose:
-            print(iteration, norm(new_gradient), abs(new_gradient).max(), abs(new_hessian).max(), norm(new_step))
+            print(f'intrinsically_flatten: {iteration=}, new_gradient norm={norm(new_gradient)}, {abs(new_gradient).max()}, {abs(new_hessian).max()}, norm of `new_step`={norm(new_step)}')
 
     # Compute new edge lengths from log conformal factors
     log_factor_columns = stack([log_factors[indices] for indices in faces_extra.T], axis=-1)
@@ -428,8 +430,9 @@ def mobius_normalize(
         log_factors += log((1 - norm(inversion_center) ** 2) / (norm(spherical_vertices + inversion_center, axis=1) ** 2))
         spherical_vertices = next_vertices
 
+        assert not isnan(first_divisions).any(), '`first_divisions` has a NaN.'
         if verbose:
-            print(iteration, first_divisions, second_divisions, next_center_of_mass)
+            print(f'mobius normalize, {iteration=}, {first_divisions=}, {second_divisions=}, {next_center_of_mass=}')
 
     return log_factors, spherical_vertices
 
