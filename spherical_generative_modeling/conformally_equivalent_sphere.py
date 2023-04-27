@@ -129,4 +129,4 @@ class ConformallyEquivalentSphere:
 
         inscribed_point = (barycentric_coords.unsqueeze(-1) * containing_vertices).sum(dim=-1)
         sphere_point = inscribed_point / norm(inscribed_point, dim=-1, keepdim=True)
-        return ((containing_inscribed_normal * containing_vertices[..., 0, :]).sum(dim=-1) ** 2) / ((containing_inscribed_normal * sphere_point).sum(dim=-1).abs() ** 3)
+        return ((containing_inscribed_normal * containing_vertices[..., 0, :]).sum(dim=-2) ** 2) / ((containing_inscribed_normal * sphere_point).sum(dim=-1).abs() ** 3)
