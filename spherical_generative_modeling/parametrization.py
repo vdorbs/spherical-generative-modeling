@@ -360,7 +360,8 @@ def mobius_normalize(
         faces: NDArray[int],
         original_areas: NDArray[float64],
         max_iters: int = 10,
-        verbose: bool = False
+        verbose: bool = False,
+        step_factor: float = 1.
 ) -> Tuple[NDArray[float64], NDArray[float64]]:
     """ Apply Möbius transformations to move area-weighted center of mass to the origin, following Möbius Registration
 
@@ -397,6 +398,7 @@ def mobius_normalize(
         face_center_outer_products = face_centers.reshape(-1, 3, 1) * face_centers.reshape(-1, 1, 3)
         center_of_mass_jac = 2 * (identity(3) - (area_proportions.reshape(-1, 1, 1) * face_center_outer_products).sum(axis=0))
         inversion_center = -solve(center_of_mass_jac, center_of_mass)
+        inversion_center *= step_factor
 
         # Line search to put center inside sphere
         first_divisions = 0
@@ -445,7 +447,8 @@ def parametrize(
         flatten_step_size: float = 1.,
         layout_starting_idx: int = 0,
         mobius_max_iters: int = 10,
-        verbose: bool = False
+        verbose: bool = False,
+        step_factor: float = 1.
 ) -> Tuple[NDArray[float64], NDArray[float64]]:
     """ Compute centered conformal spherical parametrization, unique up to rotation
 
@@ -513,7 +516,7 @@ def parametrize(
     stereo_vertices = concatenate([array([[0., 0., 1.]]), stereo_vertices])
 
     # Apply Möbius normalizations
-    mobius_log_factors, mobius_vertices = mobius_normalize(stereo_vertices, faces, face_areas, max_iters=mobius_max_iters, verbose=verbose)
+    mobius_log_factors, mobius_vertices = mobius_normalize(stereo_vertices, faces, face_areas, max_iters=mobius_max_iters, verbose=verbose, step_factor=step_factor)
 
     total_log_factors += mobius_log_factors
     new_vertices = mobius_vertices
